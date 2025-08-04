@@ -1,0 +1,46 @@
+# ==================================================
+# REQUIREMENTS.TXT - Projet d'Analyse des Courbes IDF
+# ==================================================
+# Ce fichier contient toutes les dépendances nécessaires 
+# pour le bon fonctionnement de l'application IDF
+
+# Streamlit - Framework web pour l'interface utilisateur
+streamlit>=1.28.0
+
+# Calcul scientifique et manipulation de données
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Visualisation et graphiques
+matplotlib>=3.7.0
+
+# Calculs statistiques et scientifiques
+scipy>=1.10.0
+
+# Lecture de fichiers Excel (optionnel mais recommandé)
+openpyxl>=3.1.0
+xlrd>=2.0.0
+
+# Utilitaires système (généralement inclus dans Python standard)
+# os - Inclus dans la bibliothèque standard
+# sys - Inclus dans la bibliothèque standard  
+# logging - Inclus dans la bibliothèque standard
+# time - Inclus dans la bibliothèque standard
+# tempfile - Inclus dans la bibliothèque standard
+# threading - Inclus dans la bibliothèque standard
+# typing - Inclus dans Python >= 3.5
+
+# ==================================================
+# INSTRUCTIONS D'INSTALLATION
+# ==================================================
+# Pour installer toutes les dépendances, exécutez :
+# pip install -r requirements.txt
+#
+# Pour créer un environnement virtuel (recommandé) :
+# python -m venv venv
+# venv\Scripts\activate  (Windows)
+# source venv/bin/activate  (Linux/Mac)
+# pip install -r requirements.txt
+#
+# Pour lancer l'application :
+# streamlit run index.py
