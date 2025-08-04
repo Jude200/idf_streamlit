@@ -391,6 +391,11 @@ def display_instructions():
     <span style="color: #f59e0b;">4️⃣</span> <strong>Analyse</strong> - Lancez l'analyse IDF<br>
     <span style="color: #ef4444;">5️⃣</span> <strong>Résultats</strong> - Consultez les courbes générées<br><br>
     
+    <strong>📁 Format requis:</strong><br>
+    • Colonne 'Year' avec les années<br>
+    • Colonnes durées: 1, 2, 3, 6, 12, 24h<br>
+    • Précipitations maximales annuelles
+    </div>
     """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 

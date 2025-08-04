@@ -105,13 +105,13 @@ def create_animated_logger(container):
             super().__init__()
             self.tracker = progress_tracker
             self.step_mapping = {
-                "Extraction des données": ("upload", "Chargement du fichier..."),
-                "Calcul des statistiques": ("calculating", "Calcul des statistiques..."),
-                "Estimation des lames": ("analyzing", "Analyse des précipitations..."),
-                "Calcul des intensités": ("estimating", "Calcul des intensités..."),
-                "Calcul des paramètres de Montana": ("processing", "Paramètres de Montana..."),
-                "Application de la formule": ("finalizing", "Finalisation..."),
-                "Analyse IDF terminée": ("complete", "Analyse terminée!")
+                "Données chargées": ("complete", "📊 Données chargées"),
+                "Calcul des statistiques": ("calculating", "🧮 Calcul statistiques..."),
+                "Estimation des lames": ("analyzing", "🔍 Estimation lames..."),
+                "Calcul des intensités": ("estimating", "📊 Calcul intensités..."),
+                "Calcul des paramètres": ("processing", "⚙️ Paramètres Montana..."),
+                "Application de la formule": ("finalizing", "✨ Finalisation..."),
+                "Analyse IDF terminée": ("complete", "🎉 Analyse terminée!")
             }
             self.initialized = False
         

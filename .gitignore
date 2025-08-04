@@ -1,0 +1,26 @@
+# Exlude python bytecode files
+*.pyc
+# Exclude Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# Exclude virtual environment directories
+venv/
+# Exclude IDE specific files
+.idea/
+# Exclude log files
+*.log
+# Exclude data files
+data/
+# Exclude configuration files
+config.yaml
+# Exclude compiled Python files
+*.pyo
+# Exclude cache directories
+__pycache__/
+# Exclude coverage reports
+coverage/
+# Exclude temporary files
+*.tmp
+# Exclude environment files
+.env
+# Exclude documentation build directories
+docs/_build/

@@ -79,10 +79,7 @@ class IDF:
         self.montana_estimator = None
         # self._montana_estimation()
         
-        if self.logger:
-            self.logger.info("=== Analyse IDF terminée avec succès ===")
-            if self.columns is not None and not self.columns.empty:
-                self.logger.info(f"Résultats disponibles pour {len(self.columns)} durées et {len(self.return_periods)} périodes de retour")
+        # Le message de succès sera affiché seulement après l'analyse complète
     
     def _load_dataframe(self):
         """
@@ -120,7 +117,9 @@ class IDF:
             raise Exception(error_msg)
         
         if self.logger:
-            self.logger.info(f"Données chargées avec succès: {len(self.dfs)} stations, {len(self.columns)} durées")
+            stations_str = ", ".join(self.stations[:3])  # Affiche les 3 premières stations
+            more_stations = f" et {len(self.stations)-3} autres" if len(self.stations) > 3 else ""
+            self.logger.info(f"✅ Fichier traité : {len(self.dfs)} stations ({stations_str}{more_stations}), {len(self.columns)} durées disponibles")
 
     def do_analysis(self, station: str):
         """
@@ -131,7 +130,7 @@ class IDF:
         intensités et paramètres de Montana.
         """
         if self.logger:
-            self.logger.info(f"Début de l'analyse IDF pour la station: {station}")
+            self.logger.info(f"🚀 Début de l'analyse IDF pour la station: {station}")
         
         # Vérification de la validité de la station
         if station not in self.dfs:
@@ -140,9 +139,6 @@ class IDF:
         # Sélection des données pour la station
         self.df = self.dfs[station]
         self.columns = self.df.columns[1:]
-        
-        if self.logger:
-            self.logger.info(f"Analyse IDF pour la station '{station}' avec {len(self.columns)} durées")
             
         # Calcul des statistiques descriptives et paramètres de Gumbel
         self._summary()
@@ -160,7 +156,7 @@ class IDF:
         self._montana_estimation()
         
         if self.logger:
-            self.logger.info(f"Analyse IDF terminée pour la station '{station}'")
+            self.logger.info(f"✅ Analyse IDF terminée avec succès pour la station '{station}'")
     
     def _summary(self):
         """
@@ -180,14 +176,10 @@ class IDF:
             self.summary (pd.DataFrame): DataFrame contenant les colonnes Mean, Variance, mu, beta
         """
         if self.logger:
-            self.logger.info("🧮 Calcul des statistiques descriptives et paramètres de Gumbel")
-            Utils.sleep(0.3)
+            self.logger.info("📊 Calcul des statistiques et paramètres de Gumbel")
         
         # Sélection des colonnes numériques (durées) en excluant 'Year'
         numeric_columns = self.df.columns[1:]
-
-        if self.logger:
-            self.logger.info(f"Calcul des moyennes et variances pour {len(numeric_columns)} durées")
 
         # Calcul des statistiques de base pour chaque durée
         mean_values = self.df[numeric_columns].mean()
@@ -210,9 +202,6 @@ class IDF:
             mu = mean - beta * EULER_MASCHERONI
             return mu, beta
 
-        if self.logger:
-            self.logger.info("Calcul des paramètres de Gumbel (mu, beta) pour chaque durée")
-
         # Calcul des paramètres de Gumbel pour chaque durée
         gumbel_params = {
             col: gumbel_parameters(mean_values[col], variance_values[col]) 
@@ -230,9 +219,6 @@ class IDF:
         
         # Concaténation des statistiques de base avec les paramètres de Gumbel
         self.summary = pd.concat([summary_df, gumbel_params_df], axis=1)
-        
-        if self.logger:
-            self.logger.info("Statistiques et paramètres de Gumbel calculés avec succès")
         
     
     def _rain_estimator(self):
@@ -253,16 +239,11 @@ class IDF:
                                                Index: durées, Colonnes: périodes de retour
         """
         if self.logger:
-            self.logger.info("🔍 Estimation des lames précipitées avec la distribution de Gumbel")
-            Utils.sleep(0.3)
+            self.logger.info("� Estimation des lames précipitées")
         
         # Calcul de la probabilité de non-dépassement F = 1 - 1/T
         # où T est la période de retour
         F = 1 - 1 / self.return_periods
-
-        if self.logger:
-            periods_str = ", ".join([f"{p} ans" for p in self.return_periods])
-            self.logger.info(f"Calcul pour les périodes de retour: {periods_str}")
 
         # Calcul de la variable réduite de Gumbel Y = -ln(-ln(F))
         gumbel_reduce_var = Utils.gumbel_var(F)
@@ -280,9 +261,6 @@ class IDF:
 
         # Création du DataFrame avec les durées en index et les périodes de retour en colonnes
         self.rain_estimator = pd.DataFrame(estimated_rain, index=self.return_periods).T
-        
-        if self.logger:
-            self.logger.info("Lames précipitées estimées avec succès")
 
     def _intensity_estimator(self):
         """
@@ -301,8 +279,7 @@ class IDF:
                                                     Index: durées, Colonnes: périodes de retour
         """
         if self.logger:
-            self.logger.info("📊 Calcul des intensités pluviométriques")
-            Utils.sleep(0.3)
+            self.logger.info("⚡ Calcul des intensités pluviométriques")
         
         # Calcul des intensités pour chaque durée
         estimated_intensity_rain = {}
@@ -317,9 +294,6 @@ class IDF:
             
         # Création du DataFrame des intensités avec la même structure que rain_estimator
         self.intensity_estimator = pd.DataFrame(estimated_intensity_rain, index=self.return_periods).T
-        
-        if self.logger:
-            self.logger.info("Intensités pluviométriques calculées avec succès")
 
     def _montana_parameters(self):
         """
@@ -344,8 +318,7 @@ class IDF:
                                               Index: périodes de retour, Colonnes: ['a', 'b']
         """
         if self.logger:
-            self.logger.info("⚙️ Calcul des paramètres de Montana par régression log-log")
-            Utils.sleep(0.3)
+            self.logger.info("🔧 Calcul des paramètres de Montana")
         
         # Transformation logarithmique des durées
         log_hours = np.log(self.columns.astype(float))
@@ -379,9 +352,6 @@ class IDF:
                 'r_squared': r_squared  # Coefficient de détermination pour la qualité de l'ajustement
             }
             
-            if self.logger:
-                self.logger.info(f"Période {period} ans: a={alpha:.3f}, b={beta:.2f}, r²={r_squared:.3f}")
-            
         # Création du DataFrame des paramètres
         montana_parameters_df = pd.DataFrame(montana_parameters).T
         
@@ -390,9 +360,6 @@ class IDF:
         montana_parameters_df.index.name = 'Période de retour (années)'
 
         self.montana_params = montana_parameters_df
-        
-        if self.logger:
-            self.logger.info("Paramètres de Montana calculés avec succès")
 
     def _montana_estimation(self):
         """
@@ -417,8 +384,7 @@ class IDF:
                                                   Index: durées, Colonnes: périodes de retour
         """
         if self.logger:
-            self.logger.info("✨ Application de la formule de Montana pour l'estimation finale")
-            Utils.sleep(0.3)
+            self.logger.info("📈 Génération des courbes IDF finales")
         
         montana_estimated_intensity = {}
         
@@ -443,9 +409,6 @@ class IDF:
         )
         self.montana_estimator.index.name = 'Durée (heures)'
         self.montana_estimator.columns.name = 'Période de retour (années)'
-        
-        if self.logger:
-            self.logger.info("Courbes IDF générées avec succès par la méthode de Montana")
     
     def get_intensity(self, duration: float, return_period: float) -> float:
         """
@@ -462,9 +425,6 @@ class IDF:
         Raises:
             ValueError: Si la période de retour n'est pas disponible
         """
-        if self.logger:
-            self.logger.info(f"Calcul d'intensité pour durée={duration}h, période de retour={return_period} ans")
-        
         if return_period not in self.return_periods:
             raise ValueError(f"Période de retour {return_period} non disponible. "
                            f"Périodes disponibles: {list(self.return_periods)}")
@@ -475,9 +435,6 @@ class IDF:
         
         # Application de la formule : I = b * t^(-a)
         intensity = beta * (duration ** (-alpha))
-        
-        if self.logger:
-            self.logger.info(f"Intensité calculée: {intensity:.2f} mm/h")
         
         return intensity
     
@@ -492,14 +449,8 @@ class IDF:
         Returns:
             float: Lame précipitée en mm
         """
-        if self.logger:
-            self.logger.info(f"Calcul de lame précipitée pour durée={duration}h, période de retour={return_period} ans")
-        
         intensity = self.get_intensity(duration, return_period)
         rainfall_depth = intensity * duration
-        
-        if self.logger:
-            self.logger.info(f"Lame précipitée calculée: {rainfall_depth:.2f} mm")
             
         return rainfall_depth
     
