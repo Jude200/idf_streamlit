@@ -17,6 +17,6 @@ df = Utils.transform_to_hourly_excel(input_file_path=data_path)
 
 print(df.head())
 
-sdf = Utils.calculate_annual_max_rainfall(df_hourly=df)
+sdf = Utils.calculate_annual_max_rainfall(df_hourly=df, windows=[1, 2, 3, 6, 12, 24])
 
 print(sdf)

@@ -51,36 +51,38 @@ class IDF:
         self.logger = logger
         
         # Initialisation des attributs de données
-        self.df = None
+        self.dfs = {}  # Dictionnaire pour stocker les DataFrames par station
         self.columns = None
         self.stations = None
+        self.df = None
         
         # Chargement et validation des données
         self._load_dataframe()
           
         # Calcul des statistiques et paramètres de Gumbel
         self.summary = None
-        self._summary()
+        # self._summary()
         
         # Estimation des lames précipitées
         self.rain_estimator = None
-        self._rain_estimator()
+        # self._rain_estimator()
         
         # Calcul des intensités pluviométriques
         self.intensity_estimator = None
-        self._intensity_estimator()
+        # self._intensity_estimator()
     
         # Calcul des paramètres de Montana
         self.montana_params = None
-        self._montana_parameters()
+        # self._montana_parameters()
         
         # Estimation finale avec la formule de Montana
         self.montana_estimator = None
-        self._montana_estimation()
+        # self._montana_estimation()
         
         if self.logger:
             self.logger.info("=== Analyse IDF terminée avec succès ===")
-            self.logger.info(f"Résultats disponibles pour {len(self.columns)} durées et {len(self.return_periods)} périodes de retour")
+            if self.columns is not None and not self.columns.empty:
+                self.logger.info(f"Résultats disponibles pour {len(self.columns)} durées et {len(self.return_periods)} périodes de retour")
     
     def _load_dataframe(self):
         """
@@ -96,50 +98,69 @@ class IDF:
             Exception: Si la colonne 'Year' est manquante
             Exception: Si les colonnes de durée ne sont pas des entiers positifs
         """
-        if self.logger:
-            self.logger.info("📤 Extraction des données")
-            Utils.sleep(0.5)  # Pause plus courte pour fluidité
-        
-        # Chargement du fichier selon son extension
-        try:
-            if self.data_path.endswith(('.xls', '.xlsx')):
-                df = pd.read_excel(self.data_path)
-            elif self.data_path.endswith('.csv'):
-                df = pd.read_csv(self.data_path)
-            else:
-                raise Exception(f"Type de fichier non supporté: {self.data_path}")
+        try :
+            
+            df_final = Utils.transform_to_hourly_excel(input_file_path=self.data_path)
+            
+            if df_final is None or df_final.empty:
+                raise Exception("Le DataFrame est vide ou mal formaté.")
+            
+            self.stations = df_final.columns.tolist()[1:]  # Exclut la colonne 'Year'
+
+            self.dfs = Utils.calculate_annual_max_rainfall(df_hourly=df_final, windows=[1, 2, 3, 6, 12, 24])
+            
+            # Première station pour initialiser les attributs
+            first_station = next(iter(self.dfs))
+            self.columns = self.dfs[first_station].columns[1:]
+            
         except Exception as e:
-            raise Exception(f"Erreur lors du chargement du fichier: {str(e)}")
-        
-        # Vérification de la présence de la colonne année
-        columns = df.columns.tolist()
-        if COL_YEAR not in columns:
-            raise Exception(f"Colonne '{COL_YEAR}' non trouvée dans le jeu de données")
-        
-        # Extraction des colonnes de durée (toutes sauf 'Year')
-        duration_columns = [col for col in columns if col != COL_YEAR]
-        
-        # Validation des colonnes de durée : doivent être des entiers positifs
-        validated_columns = []
-        for col in duration_columns:
-            try:
-                duration_value = int(col)
-                if duration_value < 1:
-                    raise ValueError(f"La durée doit être positive: {col}")
-                validated_columns.append(col)
-            except ValueError as e:
-                raise Exception(f"Colonne de durée invalide '{col}': doit être un entier positif")
-        
-        # Renommage des colonnes de durée en entiers pour faciliter le traitement
-        rename_mapping = {col: int(col) for col in validated_columns}
-        df.rename(columns=rename_mapping, inplace=True)
-        
-        # Stockage des données validées
-        self.df = df
-        self.columns = df.columns[1:]  # Toutes les colonnes sauf 'Year'
+            error_msg = f"Erreur lors du chargement des données: {str(e)}"
+            if self.logger:
+                self.logger.error(error_msg)
+            raise Exception(error_msg)
         
         if self.logger:
-            self.logger.info(f"Données chargées avec succès: {len(df)} années, {len(self.columns)} durées")
+            self.logger.info(f"Données chargées avec succès: {len(self.dfs)} stations, {len(self.columns)} durées")
+
+    def do_analysis(self, station: str):
+        """
+        Exécute l'analyse IDF complète.
+        
+        Cette méthode est appelée après l'initialisation pour lancer le processus d'analyse.
+        Elle appelle les méthodes internes pour calculer les statistiques, estimer les lames,
+        intensités et paramètres de Montana.
+        """
+        if self.logger:
+            self.logger.info(f"Début de l'analyse IDF pour la station: {station}")
+        
+        # Vérification de la validité de la station
+        if station not in self.dfs:
+            raise ValueError(f"La station '{station}' n'existe pas dans les données.")
+        
+        # Sélection des données pour la station
+        self.df = self.dfs[station]
+        self.columns = self.df.columns[1:]
+        
+        if self.logger:
+            self.logger.info(f"Analyse IDF pour la station '{station}' avec {len(self.columns)} durées")
+            
+        # Calcul des statistiques descriptives et paramètres de Gumbel
+        self._summary()
+        
+        # Estimation des lames précipitées
+        self._rain_estimator()
+        
+        # Calcul des intensités pluviométriques
+        self._intensity_estimator()
+        
+        # Calcul des paramètres de Montana
+        self._montana_parameters()
+        
+        # Estimation finale avec la formule de Montana
+        self._montana_estimation()
+        
+        if self.logger:
+            self.logger.info(f"Analyse IDF terminée pour la station '{station}'")
     
     def _summary(self):
         """

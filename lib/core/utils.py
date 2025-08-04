@@ -110,7 +110,7 @@ class Utils:
         return df_final  # Retourne le DataFrame final pour utilisation
 
     @staticmethod
-    def calculate_annual_max_rainfall(df_hourly):
+    def calculate_annual_max_rainfall(df_hourly, windows):
         """
         Calcule les précipitations maximales annuelles pour différentes durées.
 
@@ -128,7 +128,6 @@ class Utils:
         try:
             print("\nÉtape 2: Calcul des précipitations maximales annuelles...")
             stations = df_hourly.columns
-            windows = [1, 2, 3, 6, 12, 24]
             
             # Dictionnaire qui contiendra tous les résultats
             analysis_dict = {}
@@ -141,13 +140,13 @@ class Utils:
                 results_station = []
                 for year in sorted(station_data['Year'].unique()):
                     data_year = station_data[station_data['Year'] == year][station]
-                    max_values_for_year = {'Année': year}
+                    max_values_for_year = {'Year': year}
                     for w in windows:
                         rolling_sum = data_year.rolling(window=w, min_periods=1).sum()
-                        max_values_for_year[f'{w}h'] = rolling_sum.max()
+                        max_values_for_year[w] = rolling_sum.max()
                     results_station.append(max_values_for_year)
 
-                df_results = pd.DataFrame(results_station).set_index('Année')
+                df_results = pd.DataFrame(results_station).set_index('Year')
                 
                 # Ajout du DataFrame de la station au dictionnaire final
                 analysis_dict[station] = df_results
@@ -157,4 +156,4 @@ class Utils:
 
         except Exception as e:
             print(f"Une erreur est survenue lors du calcul des maximums annuels: {e}")
-            return None
+            raise e
