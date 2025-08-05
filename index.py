@@ -7,6 +7,9 @@ import streamlit as st
 import os
 import sys
 import numpy as np
+import io
+import pandas as pd
+import json
 
 # Ajouter le répertoire courant au path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -58,7 +61,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        font-size: 2.5rem;
+        font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 1rem;
         animation: fadeInUp 0.8s ease-out;
@@ -230,10 +233,35 @@ st.markdown("""
         border: 1px solid rgba(79, 70, 229, 0.2);
     }
     
+    /* Download buttons */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #059669, #10b981) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--border-radius) !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 500 !important;
+        font-size: 0.85rem !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+        box-shadow: var(--shadow) !important;
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #047857, #059669) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+    
+    .stDownloadButton > button:active {
+        transform: translateY(0) !important;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .main-title { font-size: 2rem; }
         .glass-card { padding: 1rem; margin: 0.5rem 0; }
+        .stDownloadButton > button { font-size: 0.8rem !important; padding: 0.4rem 0.8rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -311,40 +339,64 @@ def display_results(idf_obj, station_name):
     """, unsafe_allow_html=True)
     
     # Métriques importantes
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"""
-        <div class="metric-container">
-            <h3 style="margin: 0; color: var(--primary-color);">🏢</h3>
-            <p style="margin: 0; font-weight: 600;">{station_name}</p>
-            <small>Station</small>
-        </div>
-        """, unsafe_allow_html=True)
+    # col1, col2, col3 = st.columns(3)
+    # with col1:
+    #     st.markdown(f"""
+    #     <div class="metric-container">
+    #         <h3 style="margin: 0; color: var(--primary-color);">🏢</h3>
+    #         <p style="margin: 0; font-weight: 600;">{station_name}</p>
+    #         <small>Station</small>
+    #     </div>
+    #     """, unsafe_allow_html=True)
     
-    with col2:
-        st.markdown(f"""
-        <div class="metric-container">
-            <h3 style="margin: 0; color: var(--secondary-color);">⏱️</h3>
-            <p style="margin: 0; font-weight: 600;">{len(idf_obj.columns)}</p>
-            <small>Durées</small>
-        </div>
-        """, unsafe_allow_html=True)
+    # with col2:
+    #     st.markdown(f"""
+    #     <div class="metric-container">
+    #         <h3 style="margin: 0; color: var(--secondary-color);">⏱️</h3>
+    #         <p style="margin: 0; font-weight: 600;">{len(idf_obj.columns)}</p>
+    #         <small>Durées</small>
+    #     </div>
+    #     """, unsafe_allow_html=True)
     
-    with col3:
-        st.markdown(f"""
-        <div class="metric-container">
-            <h3 style="margin: 0; color: var(--success-color);">📅</h3>
-            <p style="margin: 0; font-weight: 600;">{len(idf_obj.return_periods)}</p>
-            <small>Périodes</small>
-        </div>
-        """, unsafe_allow_html=True)
+    # with col3:
+    #     st.markdown(f"""
+    #     <div class="metric-container">
+    #         <h3 style="margin: 0; color: var(--success-color);">📅</h3>
+    #         <p style="margin: 0; font-weight: 600;">{len(idf_obj.return_periods)}</p>
+    #         <small>Périodes</small>
+    #     </div>
+    #     """, unsafe_allow_html=True)
     
     # Affichage des résultats avec style moderne
     with st.expander("📊 Paramètres de Montana", expanded=True):
-        st.dataframe(idf_obj.get_montana_params(), use_container_width=True)
+        montana_params_df = idf_obj.get_montana_params()
+        st.dataframe(montana_params_df, use_container_width=True)
+        
+        # Bouton d'export Excel pour les paramètres de Montana
+        excel_buffer = io.BytesIO()
+        montana_params_df.to_excel(excel_buffer, index=True, engine='openpyxl')
+        st.download_button(
+            label="📊 Export Excel",
+            data=excel_buffer.getvalue(),
+            file_name=f"parametres_montana_{station_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Télécharger les paramètres de Montana au format Excel"
+        )
     
     with st.expander("📈 Intensités Estimées"):
-        st.dataframe(idf_obj.montana_estimator, use_container_width=True)
+        intensites_df = idf_obj.montana_estimator
+        st.dataframe(intensites_df, use_container_width=True)
+        
+        # Bouton d'export Excel pour les intensités estimées
+        excel_buffer = io.BytesIO()
+        intensites_df.to_excel(excel_buffer, index=True, engine='openpyxl')
+        st.download_button(
+            label="📊 Export Excel",
+            data=excel_buffer.getvalue(),
+            file_name=f"intensites_estimees_{station_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Télécharger les intensités estimées au format Excel"
+        )
     
     # Graphiques avec onglets modernes
     st.markdown("### 📈 Visualisations")
@@ -376,10 +428,72 @@ def display_results(idf_obj, station_name):
             st.caption("📌 Évaluation de la qualité d'ajustement")
         except Exception as e:
             st.error(f"Erreur graphique comparaison: {e}")
+    
+    # # Section d'export complet
+    # st.markdown("---")
+    # st.markdown("### 💾 Export Complet des Résultats")
+    
+    # with st.container():
+    #     st.markdown("""
+    #     <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(6, 182, 212, 0.1)); 
+    #                 padding: 1.5rem; border-radius: 12px; margin: 1rem 0; text-align: center;
+    #                 border: 2px solid rgba(79, 70, 229, 0.3);">
+    #         <h4 style="margin: 0; color: #4f46e5;">📋 Rapport Complet d'Analyse IDF</h4>
+    #         <p style="margin: 0.5rem 0 0 0; color: #6366f1;">Exportez tous les résultats de l'analyse en un seul fichier</p>
+    #     </div>
+    #     """, unsafe_allow_html=True)
+        
+    #     col1, col2 = st.columns(2)
+    #     with col1:
+    #         # Export Excel complet avec plusieurs feuilles
+    #         excel_buffer_complete = io.BytesIO()
+    #         with pd.ExcelWriter(excel_buffer_complete, engine='openpyxl') as writer:
+    #             # Feuille 1: Paramètres de Montana
+    #             idf_obj.get_montana_params().to_excel(writer, sheet_name='Paramètres Montana', index=True)
+                
+    #             # Feuille 2: Intensités estimées
+    #             idf_obj.montana_estimator.to_excel(writer, sheet_name='Intensités Estimées', index=True)
+                
+    #             # Feuille 3: Intensités IDF originales
+    #             idf_obj.intensity_estimator.to_excel(writer, sheet_name='Intensités IDF', index=True)
+                
+    #             # Feuille 4: Statistiques de base
+    #             if hasattr(idf_obj, 'summary'):
+    #                 idf_obj.summary.to_excel(writer, sheet_name='Statistiques', index=True)
+            
+    #         st.download_button(
+    #             label="📊 Rapport Excel Complet",
+    #             data=excel_buffer_complete.getvalue(),
+    #             file_name=f"rapport_idf_complet_{station_name}.xlsx",
+    #             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    #             help="Télécharger un fichier Excel avec tous les résultats (plusieurs onglets)"
+    #         )
+        
+    #     with col2:
+    #         # Export JSON complet
+    #         rapport_json = {
+    #             "station": station_name,
+    #             "parametres_montana": idf_obj.get_montana_params().to_dict('index'),
+    #             "intensites_estimees": idf_obj.montana_estimator.to_dict('index'),
+    #             "intensites_idf": idf_obj.intensity_estimator.to_dict('index'),
+    #             "periodes_retour": list(idf_obj.return_periods),
+    #             "durees": list(idf_obj.columns.astype(str))
+    #         }
+            
+    #         if hasattr(idf_obj, 'summary'):
+    #             rapport_json["statistiques"] = idf_obj.summary.to_dict('index')
+            
+    #         st.download_button(
+    #             label="🔗 Rapport JSON Complet",
+    #             data=json.dumps(rapport_json, indent=2, ensure_ascii=False),
+    #             file_name=f"rapport_idf_complet_{station_name}.json",
+    #             mime="application/json",
+    #             help="Télécharger tous les résultats au format JSON structuré"
+    #         )
 
 def display_instructions():
     """Affiche les instructions d'utilisation"""
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    # st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown("### 📋 Instructions")
     st.markdown("""
     <div style="line-height: 1.8;">
@@ -397,7 +511,7 @@ def display_instructions():
 def main():
     # Titre principal avec style moderne
     st.markdown('<h1 class="main-title">🌧️ Analyse des Courbes IDF</h1>', unsafe_allow_html=True)
-    st.markdown('<div style="text-align: center; margin-bottom: 2rem; color: #64748b; font-size: 1.1rem;">Intensité • Durée • Fréquence - Analyse hydrologique avancée</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 1rem; color: #64748b; font-size: 1.1rem;">Intensité • Durée • Fréquence </div>', unsafe_allow_html=True)
     
     # Barre de séparation élégante
     st.markdown('<div style="height: 2px; background: linear-gradient(90deg, #4f46e5, #06b6d4, #10b981); margin: 2rem 0; border-radius: 2px;"></div>', unsafe_allow_html=True)
@@ -417,27 +531,27 @@ def main():
     
     with col1:
         # Section Upload avec style moderne
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        # st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown("### 📁 Configuration des Données")
         st.markdown('<div style="margin-bottom: 1rem; color: #64748b;">Uploadez votre fichier de données météorologiques</div>', unsafe_allow_html=True)
         
         upload_method, uploaded_files = create_file_upload_section()
         
         # Informations sur le fichier uploadé
-        if uploaded_files:
-            file_size = uploaded_files.size / 1024  # en KB
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
-                        padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #10b981;">
-                <strong>📄 {uploaded_files.name}</strong><br>
-                <small>Taille: {file_size:.1f} KB • Type: {uploaded_files.type}</small>
-            </div>
-            """, unsafe_allow_html=True)
+        # if uploaded_files:
+            # file_size = uploaded_files.size / 1024  # en KB
+            # st.markdown(f"""
+            # <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
+            #             padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #10b981;">
+            #     <strong>📄 {uploaded_files.name}</strong><br>
+            #     <small>Taille: {file_size:.1f} KB • Type: {uploaded_files.type}</small>
+            # </div>
+            # """, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Section Actions avec style moderne
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        # st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown("### ⚡ Actions")
         
         # Bouton pour charger les données
@@ -462,14 +576,14 @@ def main():
             
             st.session_state.selected_station = selected_station
             
-            # Badge de station sélectionnée
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(6, 182, 212, 0.1)); 
-                        padding: 0.8rem; border-radius: 8px; margin: 1rem 0; text-align: center; 
-                        border: 2px solid rgba(79, 70, 229, 0.2);">
-                <strong>📍 Station: {selected_station}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+            # # Badge de station sélectionnée
+            # st.markdown(f"""
+            # <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(6, 182, 212, 0.1)); 
+            #             padding: 0.8rem; border-radius: 8px; margin: 1rem 0; text-align: center; 
+            #             border: 2px solid rgba(79, 70, 229, 0.2);">
+            #     <strong>📍 Station: {selected_station}</strong>
+            # </div>
+            # """, unsafe_allow_html=True)
         
         # Bouton d'analyse principal
         analysis_disabled = not (st.session_state.stations_loaded and st.session_state.selected_station)
@@ -486,7 +600,7 @@ def main():
     
     with col2:
         # Section Résultats avec style moderne
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        # st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown("### 📊 Tableau de Bord")
         
         # Affichage conditionnel du contenu

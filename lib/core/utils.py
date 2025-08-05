@@ -126,14 +126,14 @@ class Utils:
             return None
             
         try:
-            print("\nÉtape 2: Calcul des précipitations maximales annuelles...")
+            # print("\nÉtape 2: Calcul des précipitations maximales annuelles...")
             stations = df_hourly.columns
             
             # Dictionnaire qui contiendra tous les résultats
             analysis_dict = {}
 
             for station in stations:
-                print(f"  - Traitement de la station : {station}")
+                # print(f"  - Traitement de la station : {station}")
                 station_data = df_hourly[[station]].copy()
                 station_data['Year'] = station_data.index.year
                 
@@ -151,7 +151,7 @@ class Utils:
                 # Ajout du DataFrame de la station au dictionnaire final
                 analysis_dict[station] = df_results
             
-            print(" -> Calcul terminé.")
+            # print(" -> Calcul terminé.")
             return analysis_dict
 
         except Exception as e:

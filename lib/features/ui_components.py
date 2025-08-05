@@ -78,14 +78,14 @@ def create_file_upload_section():
     if uploaded_files:
         # Affichage moderne du fichier uploadé
         file_info = f"**{uploaded_files.name}** ({uploaded_files.size//1024}KB)"
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
-                    padding: 1rem; border-radius: 8px; margin: 1rem 0; 
-                    border-left: 4px solid #10b981; text-align: center;">
-            <strong style="color: #065f46;">✅ Fichier uploadé</strong><br>
-            <span style="color: #047857;">{file_info}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        # st.markdown(f"""
+        # <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
+        #             padding: 1rem; border-radius: 8px; margin: 1rem 0; 
+        #             border-left: 4px solid #10b981; text-align: center;">
+        #     <strong style="color: #065f46;">✅ Fichier uploadé</strong><br>
+        #     <span style="color: #047857;">{file_info}</span>
+        # </div>
+        # """, unsafe_allow_html=True)
     
     return upload_method, uploaded_files
 
@@ -239,7 +239,7 @@ def create_montana_curves_plot(idf_obj):
     # Configuration des axes avec style moderne
     ax.set_xlabel('Durée (heures)', fontsize=14, fontweight='600', color='#374151')
     ax.set_ylabel('Intensité (mm/h)', fontsize=14, fontweight='600', color='#374151')
-    ax.set_title('Courbes Montana - Modèle I = b × t^(-a)', 
+    ax.set_title('Courbes Montana', 
                 fontsize=16, fontweight='700', color='#1f2937', pad=20)
     
     # Grille moderne
