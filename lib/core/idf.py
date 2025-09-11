@@ -111,7 +111,11 @@ class IDF:
             
             # Première station pour initialiser les attributs
             first_station = next(iter(self.dfs))
-            self.columns = self.dfs[first_station].columns[1:]
+            self.columns = self.dfs[first_station].columns
+            # print("Colonnes de durée détectées :", self.columns.tolist())
+            # print(self.dfs[first_station].head())
+            # print(self.dfs[first_station].columns)
+            # print(self.columns)
             
         except Exception as e:
             error_msg = f"Erreur lors du chargement des données: {str(e)}"
@@ -141,7 +145,8 @@ class IDF:
         
         # Sélection des données pour la station
         self.df = self.dfs[station]
-        self.columns = self.df.columns[1:]
+        # self.columns = self.df.columns[1:]
+        self.columns = self.df.columns
             
         # Calcul des statistiques descriptives et paramètres de Gumbel
         self._summary()
@@ -182,7 +187,9 @@ class IDF:
             self.logger.info("📊 Calcul des statistiques et paramètres de Gumbel")
         
         # Sélection des colonnes numériques (durées) en excluant 'Year'
-        numeric_columns = self.df.columns[1:]
+        numeric_columns = self.df.columns
+        print(self.df.head())
+        # print(numeric_columns)
 
         # Calcul des statistiques de base pour chaque durée
         mean_values = self.df[numeric_columns].mean()

@@ -21,6 +21,6 @@ idf = IDF(data_path=data_path,
                         return_periods=np.array([2, 5, 10, 20, 50, 100]) )
 
 idf._load_dataframe()
-
+idf.do_analysis("NATITINGOU")
 print(idf.stations)
 
