@@ -284,6 +284,8 @@ def handle_data_loading(uploaded_files, results_col):
                         return_periods=np.array([2, 5, 10, 20, 50, 100]), 
                         logger=logger
                     )
+                    # Afficher les stations disponibles
+                    # print("Stations disponibles:", temp_idf.stations)
                     st.session_state.stations_loaded = True
                     st.session_state.available_stations = temp_idf.stations
                     logger.info(f"🏢 {len(temp_idf.stations)} stations disponibles")

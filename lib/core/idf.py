@@ -98,11 +98,14 @@ class IDF:
         try :
             
             df_final = Utils.transform_to_hourly_excel(input_file_path=self.data_path)
+            # print(df_final.head())
             
             if df_final is None or df_final.empty:
                 raise Exception("Le DataFrame est vide ou mal formaté.")
             
-            self.stations = df_final.columns.tolist()[1:]  # Exclut la colonne 'Year'
+            # print(df_final.columns.tolist())
+            
+            self.stations = df_final.columns.tolist()
 
             self.dfs = Utils.calculate_annual_max_rainfall(df_hourly=df_final, windows=[1, 2, 3, 6, 12, 24])
             
