@@ -23,7 +23,9 @@ from lib.features.ui_components import (
     create_loading_spinner,
     create_idf_curves_plot,
     create_montana_curves_plot,
-    create_comparison_plot
+    create_cumuls_curve,
+    create_comparison_plot,
+    create_distribution_plot
 )
 from lib.core.idf import IDF
 
@@ -281,7 +283,8 @@ def handle_data_loading(uploaded_files, results_col):
                     # Créer une instance IDF temporaire pour récupérer les stations
                     temp_idf = IDF(
                         data_path=st.session_state.temp_file_path, 
-                        return_periods=np.array([2, 5, 10, 20, 50, 100]), 
+                        return_periods=np.array([5, 10, 20, 50, 100]), 
+                        windows=np.array([1, 2, 4, 8, 24]),
                         logger=logger
                     )
                     # Afficher les stations disponibles
@@ -309,7 +312,8 @@ def handle_analysis(results_col):
                 try:
                     idf = IDF(
                         data_path=st.session_state.temp_file_path, 
-                        return_periods=np.array([2, 5, 10, 20, 50, 100]), 
+                        return_periods = np.array([5, 10, 20, 50, 100]),
+                        windows=np.array([1, 2, 4, 8, 24]),
                         logger=logger
                     )
                     
@@ -402,18 +406,9 @@ def display_results(idf_obj, station_name):
     
     # Graphiques avec onglets modernes
     st.markdown("### 📈 Visualisations")
-    tab1, tab2, tab3 = st.tabs(["🔵 Courbes IDF", "🔶 Montana", "⚖️ Comparaison"])
+    tab1, tab2, tab3 = st.tabs(["  🔶 Montana  ", "  💧 Cumuls  ", "  📊 Distribution  "])
     
     with tab1:
-        st.markdown("**Courbes IDF** - *Distribution de Gumbel*")
-        try:
-            fig_idf = create_idf_curves_plot(idf_obj)
-            st.pyplot(fig_idf)
-            st.caption("📌 Intensités estimées à partir des données observées")
-        except Exception as e:
-            st.error(f"Erreur graphique IDF: {e}")
-    
-    with tab2:
         st.markdown("**Courbes Montana** - *Modèle I = b × t^(-a)*")
         try:
             fig_montana = create_montana_curves_plot(idf_obj)
@@ -422,14 +417,23 @@ def display_results(idf_obj, station_name):
         except Exception as e:
             st.error(f"Erreur graphique Montana: {e}")
     
-    with tab3:
-        st.markdown("**Comparaison** - *IDF vs Montana*")
+    with tab2:
+        st.markdown("**Cumuls Annuels** - *Précipitations cumulées*")
         try:
-            fig_comparison = create_comparison_plot(idf_obj)
-            st.pyplot(fig_comparison)
-            st.caption("📌 Évaluation de la qualité d'ajustement")
+            fig_cumuls = create_cumuls_curve(idf_obj)
+            st.pyplot(fig_cumuls)
+            st.caption("📌 Cumul annuel des précipitations par période de retour")
         except Exception as e:
-            st.error(f"Erreur graphique comparaison: {e}")
+            st.error(f"Erreur graphique cumuls: {e}")
+    
+    with tab3:
+        st.markdown("**Ajustements Gumbel** - *Distribution des valeurs extrêmes*")
+        try:
+            fig_distribution = create_distribution_plot(idf_obj)
+            st.pyplot(fig_distribution)
+            st.caption("📌 Analyse statistique des ajustements Gumbel par durée")
+        except Exception as e:
+            st.error(f"Erreur graphique distribution: {e}")
     
     # # Section d'export complet
     # st.markdown("---")
@@ -527,6 +531,8 @@ def main():
         st.session_state.selected_station = None
     if 'stations_loaded' not in st.session_state:
         st.session_state.stations_loaded = False
+    if 'uploaded_file_name' not in st.session_state:
+        st.session_state.uploaded_file_name = None
     
     # Layout principal avec colonnes
     col1, col2 = st.columns([1, 2], gap="large")
@@ -538,6 +544,17 @@ def main():
         st.markdown('<div style="margin-bottom: 1rem; color: #64748b;">Uploadez votre fichier de données météorologiques</div>', unsafe_allow_html=True)
         
         upload_method, uploaded_files = create_file_upload_section()
+        
+        # Détecter si un nouveau fichier a été uploadé
+        new_file_uploaded = False
+        if uploaded_files and (st.session_state.uploaded_file_name != uploaded_files.name):
+            new_file_uploaded = True
+            st.session_state.uploaded_file_name = uploaded_files.name
+            # Réinitialiser les états quand un nouveau fichier est uploadé
+            st.session_state.stations_loaded = False
+            st.session_state.idf = None
+            st.session_state.selected_station = None
+            st.session_state.temp_file_path = None
         
         # Informations sur le fichier uploadé
         # if uploaded_files:
@@ -557,8 +574,16 @@ def main():
         st.markdown("### ⚡ Actions")
         
         # Bouton pour charger les données
-        load_button_style = "🔄 Charger les données" if not st.session_state.stations_loaded else "✅ Données chargées"
-        if st.button(load_button_style, type="secondary", disabled=st.session_state.stations_loaded):
+        if uploaded_files:
+            # Si un fichier est présent, le bouton est toujours disponible
+            load_button_style = "🔄 Charger les données" if not st.session_state.stations_loaded else "🔄 Recharger les données"
+            button_disabled = False
+        else:
+            # Pas de fichier uploadé
+            load_button_style = "📁 Aucun fichier sélectionné"
+            button_disabled = True
+        
+        if st.button(load_button_style, type="secondary", disabled=button_disabled):
             if not uploaded_files:
                 st.error("📁 Veuillez d'abord uploader un fichier")
             else:

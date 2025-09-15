@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-from scipy.stats import linregress
+from scipy.stats import linregress, genextreme
 
 from lib.const import *
 from lib.core.utils import Utils
@@ -33,7 +33,7 @@ class IDF:
         montana_estimator (pd.DataFrame): Intensités estimées par Montana
     """
     
-    def __init__(self, data_path: str, return_periods: np.ndarray, logger: Logger = None):
+    def __init__(self, data_path: str, return_periods: np.ndarray, windows: np.ndarray, logger: Logger = None):
         """
         Initialise une instance IDF et exécute toute la chaîne de traitement.
         
@@ -48,6 +48,7 @@ class IDF:
         # Initialisation des attributs principaux
         self.data_path = data_path
         self.return_periods = return_periods
+        self.windows = windows
         self.logger = logger
         
         # Initialisation des attributs de données
@@ -97,7 +98,7 @@ class IDF:
         """
         try :
             
-            df_final = Utils.transform_to_hourly_excel(input_file_path=self.data_path)
+            df_final = Utils.convert_to_cdt_hourly(file_path=self.data_path)
             # print(df_final.head())
             
             if df_final is None or df_final.empty:
@@ -107,7 +108,7 @@ class IDF:
             
             self.stations = df_final.columns.tolist()
 
-            self.dfs = Utils.calculate_annual_max_rainfall(df_hourly=df_final, windows=[1, 2, 3, 6, 12, 24])
+            self.dfs = Utils.calculate_annual_max_rainfall(df_hourly=df_final, windows=self.windows)
             
             # Première station pour initialiser les attributs
             first_station = next(iter(self.dfs))
@@ -188,33 +189,48 @@ class IDF:
         
         # Sélection des colonnes numériques (durées) en excluant 'Year'
         numeric_columns = self.df.columns
-        print(self.df.head())
+        # print(numeric_columns)
+        # print(self.df.head())
         # print(numeric_columns)
 
         # Calcul des statistiques de base pour chaque durée
         mean_values = self.df[numeric_columns].mean()
         variance_values = self.df[numeric_columns].var()
         
-        def gumbel_parameters(mean, variance):
-            """
-            Calcule les paramètres de la distribution de Gumbel par la méthode des moments.
+        # def gumbel_parameters(mean, variance):
+        #     """
+        #     Calcule les paramètres de la distribution de Gumbel par la méthode des moments.
             
-            Args:
-                mean (float): Moyenne de l'échantillon
-                variance (float): Variance de l'échantillon
+        #     Args:
+        #         mean (float): Moyenne de l'échantillon
+        #         variance (float): Variance de l'échantillon
+                
+        #     Returns:
+        #         tuple: (mu, beta) paramètres de position et d'échelle de Gumbel
+        #     """
+        #     # Paramètre d'échelle (beta)
+        #     beta = np.sqrt(6 * variance) / np.pi
+        #     # Paramètre de position (mu) 
+        #     mu = mean - beta * EULER_MASCHERONI
+        #     return mu, beta
+        
+        def gumbel_parameters(serie):
+            """
+            Calcule les paramètres de la distribution de Gumbel par vraisemblance.
                 
             Returns:
                 tuple: (mu, beta) paramètres de position et d'échelle de Gumbel
             """
             # Paramètre d'échelle (beta)
-            beta = np.sqrt(6 * variance) / np.pi
+            bfitGumbel = genextreme.fit(serie, fc=0)
             # Paramètre de position (mu) 
-            mu = mean - beta * EULER_MASCHERONI
+            mu = bfitGumbel[1]
+            beta = bfitGumbel[2]
             return mu, beta
 
         # Calcul des paramètres de Gumbel pour chaque durée
         gumbel_params = {
-            col: gumbel_parameters(mean_values[col], variance_values[col]) 
+            col: gumbel_parameters(self.df[col]) 
             for col in numeric_columns
         }
 
@@ -249,14 +265,14 @@ class IDF:
                                                Index: durées, Colonnes: périodes de retour
         """
         if self.logger:
-            self.logger.info("� Estimation des lames précipitées")
+            self.logger.info("Estimation des lames précipitées")
         
         # Calcul de la probabilité de non-dépassement F = 1 - 1/T
         # où T est la période de retour
         F = 1 - 1 / self.return_periods
 
         # Calcul de la variable réduite de Gumbel Y = -ln(-ln(F))
-        gumbel_reduce_var = Utils.gumbel_var(F)
+        # gumbel_reduce_var = Utils.gumbel_var(F)
 
         # Estimation des lames précipitées pour chaque durée
         estimated_rain = {}
@@ -267,7 +283,10 @@ class IDF:
             beta = self.summary.loc[column, 'beta']
             
             # Application de la formule de quantile de Gumbel : X = mu + beta * Y
-            estimated_rain[column] = mu + beta * gumbel_reduce_var
+            g = genextreme(loc=mu, scale=beta, c=0)
+
+            # estimated_rain[column] = mu + beta * gumbel_reduce_var
+            estimated_rain[column] = g.ppf(F)
 
         # Création du DataFrame avec les durées en index et les périodes de retour en colonnes
         self.rain_estimator = pd.DataFrame(estimated_rain, index=self.return_periods).T
@@ -291,19 +310,20 @@ class IDF:
         if self.logger:
             self.logger.info("⚡ Calcul des intensités pluviométriques")
         
-        # Calcul des intensités pour chaque durée
-        estimated_intensity_rain = {}
+        # # Calcul des intensités pour chaque durée
+        # estimated_intensity_rain = {}
 
-        for column in self.columns:
-            # Conversion de la durée en entier pour le calcul
-            duration_hours = int(column)
+        # for column in self.columns:
+        #     # Conversion de la durée en entier pour le calcul
+        #     duration_hours = int(column)
             
-            # Calcul de l'intensité : lame précipitée / durée
-            # self.rain_estimator.loc[column] contient les lames pour toutes les périodes de retour
-            estimated_intensity_rain[column] = self.rain_estimator.loc[column] / duration_hours
+        #     # Calcul de l'intensité : lame précipitée / durée
+        #     # self.rain_estimator.loc[column] contient les lames pour toutes les périodes de retour
+        #     estimated_intensity_rain[column] = self.rain_estimator.loc[column] / duration_hours
             
-        # Création du DataFrame des intensités avec la même structure que rain_estimator
-        self.intensity_estimator = pd.DataFrame(estimated_intensity_rain, index=self.return_periods).T
+        # # Création du DataFrame des intensités avec la même structure que rain_estimator
+        # self.intensity_estimator = pd.DataFrame(estimated_intensity_rain, index=self.return_periods).T
+        self.intensity_estimator = self.rain_estimator.copy()
 
     def _montana_parameters(self):
         """
