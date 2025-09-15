@@ -27,6 +27,7 @@ from lib.features.ui_components import (
     create_comparison_plot,
     create_distribution_plot
 )
+# from lib.features.documentation import display_idf_methodology, show_documentation_section
 from lib.core.idf import IDF
 
 # Configuration de la page
@@ -302,26 +303,36 @@ def handle_data_loading(uploaded_files, results_col):
                     logger.error(error_msg)
 
 def handle_analysis(results_col):
-    """Gère l'analyse IDF"""
+    """Gère l'analyse IDF avec paramètres personnalisés"""
     with st.spinner("🧮 Analyse IDF en cours..."):
         with results_col:
             with st.container():
                 logger = create_animated_logger(st.container())
                 logger.info(f"🚀 Lancement de l'analyse IDF pour la station: {st.session_state.selected_station}")
                 
+                # Récupérer les paramètres personnalisés ou utiliser les valeurs par défaut
+                custom_periods = getattr(st.session_state, 'custom_periods', [5, 10, 20, 50, 100])
+                custom_durations = getattr(st.session_state, 'custom_durations', [1, 2, 4, 8, 24])
+                
+                logger.info(f"📊 Périodes de retour: {custom_periods}")
+                logger.info(f"⏱️ Durées d'agrégation: {custom_durations}h")
+                
                 try:
                     idf = IDF(
                         data_path=st.session_state.temp_file_path, 
-                        return_periods = np.array([5, 10, 20, 50, 100]),
-                        windows=np.array([1, 2, 4, 8, 24]),
+                        return_periods=np.array(custom_periods),
+                        windows=np.array(custom_durations),
                         logger=logger
                     )
                     
                     # Exécuter l'analyse pour la station sélectionnée
                     idf.do_analysis(st.session_state.selected_station)
                     
-                    # Stocker l'IDF dans la session
+                    # Stocker l'IDF dans la session avec les paramètres utilisés
                     st.session_state.idf = idf
+                    st.session_state.analysis_periods = custom_periods
+                    st.session_state.analysis_durations = custom_durations
+                    
                     logger.info(f"🎉 Analyse IDF terminée avec succès!")
                     
                     st.success(f'✅ Analyse terminée pour la station **{st.session_state.selected_station}**!')
@@ -335,6 +346,10 @@ def handle_analysis(results_col):
 
 def display_results(idf_obj, station_name):
     """Affiche les résultats de l'analyse IDF"""
+    # Récupérer les paramètres utilisés pour l'analyse
+    analysis_periods = getattr(st.session_state, 'analysis_periods', [5, 10, 20, 50, 100])
+    analysis_durations = getattr(st.session_state, 'analysis_durations', [1, 2, 4, 8, 24])
+    
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
                 padding: 1.5rem; border-radius: 12px; margin: 1rem 0; text-align: center;
@@ -343,6 +358,28 @@ def display_results(idf_obj, station_name):
         <p style="margin: 0.5rem 0 0 0; color: #065f46;">Station: <strong>{station_name}</strong></p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Affichage des paramètres de configuration utilisés
+    # st.markdown("### ⚙️ Configuration Utilisée")
+    # col1, col2 = st.columns(2)
+    
+    # with col1:
+    #     periods_text = ", ".join([f"{p} ans" for p in analysis_periods])
+    #     st.markdown(f"""
+    #     <div style="background: rgba(79, 70, 229, 0.1); padding: 1rem; border-radius: 8px; text-align: center;">
+    #         <h4 style="margin: 0; color: #4f46e5;">🎯 Périodes de Retour</h4>
+    #         <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">{periods_text}</p>
+    #     </div>
+    #     """, unsafe_allow_html=True)
+    
+    # with col2:
+    #     durations_text = ", ".join([f"{d}h" for d in analysis_durations])
+    #     st.markdown(f"""
+    #     <div style="background: rgba(6, 182, 212, 0.1); padding: 1rem; border-radius: 8px; text-align: center;">
+    #         <h4 style="margin: 0; color: #06b6d4;">⏱️ Durées d'Agrégation</h4>
+    #         <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">{durations_text}</p>
+    #     </div>
+    #     """, unsafe_allow_html=True)
     
     # Métriques importantes
     # col1, col2, col3 = st.columns(3)
@@ -435,6 +472,29 @@ def display_results(idf_obj, station_name):
         except Exception as e:
             st.error(f"Erreur graphique distribution: {e}")
     
+    # with tab4:
+    #     st.markdown("**Méthodologie de Calcul** - *Comprendre les courbes IDF*")
+    #     try:
+    #         display_idf_methodology()
+    #     except Exception as e:
+    #         st.error(f"Erreur affichage documentation: {e}")
+    #         # Fallback: affichage d'informations de base
+    #         st.markdown("""
+    #         ### 📚 Guide Méthodologique IDF
+            
+    #         Les courbes **Intensité-Durée-Fréquence (IDF)** permettent de déterminer 
+    #         l'intensité de précipitation pour une durée donnée et un temps de retour spécifique.
+            
+    #         **Processus de calcul** :
+    #         1. **📊 Échantillonnage** : Maxima annuels par durée  
+    #         2. **📈 Ajustement** : Loi de Gumbel pour modéliser les valeurs extrêmes
+    #         3. **⏰ Temps de retour** : P = 1 - 1/T
+    #         4. **🔢 Montana** : I = a × D^(-b)
+    #         5. **📊 Courbes IDF** : Visualisation finale
+            
+    #         **Formule clé** : $I_T(D) = a_T × D^{-b_T}$
+    #         """)
+    
     # # Section d'export complet
     # st.markdown("---")
     # st.markdown("### 💾 Export Complet des Résultats")
@@ -521,6 +581,124 @@ def main():
     
     # Barre de séparation élégante
     st.markdown('<div style="height: 2px; background: linear-gradient(90deg, #4f46e5, #06b6d4, #10b981); margin: 2rem 0; border-radius: 2px;"></div>', unsafe_allow_html=True)
+    
+    # ========================================
+    # 🎛️ SIDEBAR - PERSONNALISATION AVANCÉE
+    # ========================================
+    with st.sidebar:
+        st.markdown("## ⚙️ Configuration Avancée")
+        
+        # Séparateur visuel
+        st.markdown('<div style="height: 1px; background: linear-gradient(90deg, #4f46e5, #06b6d4); margin: 1rem 0;"></div>', unsafe_allow_html=True)
+        
+        # 🎯 Périodes de retour personnalisables
+        st.markdown("### 🎯 Périodes de Retour")
+        st.markdown('<small style="color: #64748b;">Sélectionnez les années d\'analyse</small>', unsafe_allow_html=True)
+        
+        # Options disponibles
+        period_options = [2, 5, 10, 20, 25, 50, 100, 200]
+        
+        # Sélection par défaut (anciennes valeurs)
+        default_periods = [5, 10, 20, 50, 100]
+        
+        selected_periods = st.multiselect(
+            "Périodes de retour (années):",
+            options=period_options,
+            default=default_periods,
+            help="Choisissez au moins 2 périodes pour l'analyse"
+        )
+        
+        # Validation des périodes
+        if len(selected_periods) < 2:
+            st.warning("⚠️ Sélectionnez au moins 2 périodes")
+            selected_periods = default_periods
+        
+        # Affichage des périodes sélectionnées
+        periods_text = ", ".join([f"{p} ans" for p in sorted(selected_periods)])
+        st.markdown(f'<div style="background: rgba(79, 70, 229, 0.1); padding: 0.5rem; border-radius: 8px; font-size: 0.8rem; margin-top: 0.5rem;"><strong>Sélectionnées:</strong> {periods_text}</div>', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # ⏱️ Durées d'agrégation personnalisables
+        st.markdown("### ⏱️ Durées d'Agrégation")
+        st.markdown('<small style="color: #64748b;">Sélectionnez les durées d\'analyse</small>', unsafe_allow_html=True)
+        
+        # Options disponibles
+        duration_options = [1, 2, 3, 4, 6, 8, 12, 24]
+        duration_labels = [f"{d}h" for d in duration_options]
+        
+        # Sélection par défaut (anciennes valeurs)
+        default_durations = [1, 2, 4, 8, 24]
+        default_duration_labels = [f"{d}h" for d in default_durations]
+        
+        selected_duration_labels = st.multiselect(
+            "Durées d'agrégation:",
+            options=duration_labels,
+            default=default_duration_labels,
+            help="Choisissez au moins 2 durées pour l'analyse"
+        )
+        
+        # Convertir les labels en valeurs numériques
+        selected_durations = [int(label.replace('h', '')) for label in selected_duration_labels]
+        
+        # Validation des durées
+        if len(selected_durations) < 2:
+            st.warning("⚠️ Sélectionnez au moins 2 durées")
+            selected_durations = default_durations
+        
+        # Affichage des durées sélectionnées
+        durations_text = ", ".join([f"{d}h" for d in sorted(selected_durations)])
+        st.markdown(f'<div style="background: rgba(6, 182, 212, 0.1); padding: 0.5rem; border-radius: 8px; font-size: 0.8rem; margin-top: 0.5rem;"><strong>Sélectionnées:</strong> {durations_text}</div>', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # 📊 Résumé de la configuration
+        st.markdown("### 📊 Résumé")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Périodes", len(selected_periods))
+        with col2:
+            st.metric("Durées", len(selected_durations))
+        
+        st.markdown("---")
+        
+        # 📚 Section Documentation rapide
+        st.markdown("### 📚 Documentation")
+        with st.expander("ℹ️ Guide Rapide IDF", expanded=False):
+            st.markdown("""
+            **Processus de calcul IDF** :
+            
+            1. **📊 Échantillonnage** : Maxima annuels
+            2. **📈 Ajustement** : Loi de Gumbel  
+            3. **⏰ Temps de retour** : P = 1 - 1/T
+            4. **🔢 Montana** : I = a × D^(-b)
+            5. **📊 Visualisation** : Courbes finales
+            
+            **Applications** :
+            - Dimensionnement hydraulique
+            - Méthode rationnelle : Q = C × I × A
+            - Gestion des risques d'inondation
+            
+            💡 *Consultez l'onglet "Documentation" pour plus de détails*
+            """)
+        
+        # Sauvegarder dans session state
+        st.session_state.custom_periods = sorted(selected_periods)
+        st.session_state.custom_durations = sorted(selected_durations)
+        
+        # Détecter les changements de configuration et réinitialiser l'analyse
+        previous_periods = getattr(st.session_state, 'previous_periods', None)
+        previous_durations = getattr(st.session_state, 'previous_durations', None)
+        
+        if (previous_periods != st.session_state.custom_periods or 
+            previous_durations != st.session_state.custom_durations):
+            # Configuration changée, réinitialiser l'analyse
+            if hasattr(st.session_state, 'idf') and st.session_state.idf is not None:
+                st.session_state.idf = None
+                st.info("🔄 Configuration modifiée - Relancez l'analyse pour appliquer les nouveaux paramètres")
+            
+            st.session_state.previous_periods = st.session_state.custom_periods
+            st.session_state.previous_durations = st.session_state.custom_durations
     
     # Initialisation des variables de session
     if 'temp_file_path' not in st.session_state:

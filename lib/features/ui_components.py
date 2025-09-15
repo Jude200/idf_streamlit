@@ -18,7 +18,8 @@ def setup_page_config():
     st.set_page_config(
         page_title="IDF",
         page_icon="📈",
-        layout="wide")  # Use full width of the page
+        layout="wide",
+        initial_sidebar_state="collapsed")  # Sidebar fermée par défaut
 
 def display_error_message(message):
     """
