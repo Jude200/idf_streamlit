@@ -159,6 +159,8 @@ def create_idf_curves_plot(idf_obj):
     # Configuration du graphique avec style moderne
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=FIGURE_SIZE, dpi=100)
+    # ax.loglog()
+    # ax.semilogx()
     fig.patch.set_facecolor('white')
     
     # Palette de couleurs moderne et professionnelle
