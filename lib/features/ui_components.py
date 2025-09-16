@@ -160,51 +160,72 @@ def create_idf_curves_plot(idf_obj):
     # Configuration du graphique avec style moderne
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=FIGURE_SIZE, dpi=100)
-    # ax.loglog()
-    # ax.semilogx()
+    ax.loglog()  # Echelle log-log
     fig.patch.set_facecolor('white')
+
+    # Configuration des ticks pour les axes
+    xTicks = idf_obj.windows
+    xtlabs = ["{0:.0f}".format(np.rint(x)) + 'h' for x in xTicks]
     
+    # Configuration des ticks pour l'axe Y (intensités)
+    # Calcul de la plage des intensités pour définir les ticks Y appropriés
+    all_intensities = []
+    for period in idf_obj.return_periods:
+        all_intensities.extend(idf_obj.intensity_estimator[period].values)
+    
+    min_intensity = min(all_intensities)
+    max_intensity = max(all_intensities)
+    
+    # Création de ticks Y logarithmiques appropriés
+    yTicks = [1, 2, 5, 10, 20, 50, 100, 200, 500]
+    # Filtrer les ticks pour qu'ils soient dans la plage des données
+    yTicks = [y for y in yTicks if min_intensity * 0.5 <= y <= max_intensity * 2]
+    
+    # Labels pour les ticks Y
+    ytlabs = ["{0:.0f}".format(y) for y in yTicks]
+
     # Palette de couleurs moderne et professionnelle
     colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-    
+
     # Tracer une courbe pour chaque période de retour
     for i, period in enumerate(idf_obj.return_periods):
         intensities = idf_obj.intensity_estimator[period].values
         durations = idf_obj.columns.astype(float)
-        
-        ax.plot(durations, intensities, 
+
+        ax.plot(durations, intensities,
                 marker='o', linewidth=3, markersize=8,
                 color=colors[i % len(colors)],
                 label=f'{period} ans',
                 markeredgecolor='white',
                 markeredgewidth=2,
                 alpha=0.9)
-    
-    # Configuration des axes avec style moderne
-    ax.set_xlabel('Durée (heures)', fontsize=14, fontweight='600', color='#374151')
-    ax.set_ylabel('Intensité (mm/h)', fontsize=14, fontweight='600', color='#374151') 
-    ax.set_title('Courbes IDF - Intensité vs Durée', 
-                fontsize=16, fontweight='700', color='#1f2937', pad=20)
-    
+
+    # Configuration des axes avec style moderne et ticks personnalisés
+    ax.set(title='Courbes IDF - Intensité vs Durée - Gumbel', 
+           xticks=xTicks, xticklabels=xtlabs, 
+           yticks=yTicks, yticklabels=ytlabs,
+           xlabel='Durée de précipitation', 
+           ylabel='Intensité de précipitation (mm/h)')
+
     # Grille moderne
-    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#d1d5db')
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#d1d5db', which='both')
     ax.set_axisbelow(True)
-    
+
     # Légende moderne
-    legend = ax.legend(title='Période de retour', loc='upper right', 
+    legend = ax.legend(title='Période de retour', loc='upper right',
                       frameon=True, fancybox=True, shadow=True,
                       title_fontsize=12, fontsize=11)
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.95)
     legend.get_frame().set_edgecolor('#e5e7eb')
-    
+
     # Style des axes
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_color('#e5e7eb')
     ax.spines['bottom'].set_color('#e5e7eb')
     ax.tick_params(colors='#6b7280', labelsize=10)
-    
+
     plt.tight_layout()
     return fig
 
@@ -311,7 +332,30 @@ def create_comparison_plot(idf_obj):
     # Configuration du graphique avec style moderne
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=FIGURE_SIZE, dpi=100)
+    ax.loglog()  # Echelle log-log
     fig.patch.set_facecolor('white')
+    
+    # Configuration des ticks pour les axes
+    xTicks = idf_obj.windows
+    xtlabs = ["{0:.0f}".format(np.rint(x)) + 'h' for x in xTicks]
+    
+    # Configuration des ticks pour l'axe Y (intensités)
+    # Calcul de la plage des intensités pour définir les ticks Y appropriés
+    all_intensities = []
+    for period in idf_obj.return_periods:
+        all_intensities.extend(idf_obj.intensity_estimator[period].values)
+        all_intensities.extend(idf_obj.montana_estimator[period].values)
+    
+    min_intensity = min(all_intensities)
+    max_intensity = max(all_intensities)
+    
+    # Création de ticks Y logarithmiques appropriés
+    yTicks = [1, 2, 5, 10, 20, 50, 100, 200, 500]
+    # Filtrer les ticks pour qu'ils soient dans la plage des données
+    yTicks = [y for y in yTicks if min_intensity * 0.5 <= y <= max_intensity * 2]
+    
+    # Labels pour les ticks Y
+    ytlabs = ["{0:.0f}".format(y) for y in yTicks]
     
     # Palette de couleurs moderne et professionnelle
     colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
@@ -339,14 +383,15 @@ def create_comparison_plot(idf_obj):
                 markeredgecolor='white',
                 markeredgewidth=1)
     
-    # Configuration des axes avec style moderne
-    ax.set_xlabel('Durée (heures)', fontsize=14, fontweight='600', color='#374151')
-    ax.set_ylabel('Intensité (mm/h)', fontsize=14, fontweight='600', color='#374151')
-    ax.set_title('Comparaison IDF vs Montana\nÉvaluation de la qualité d\'ajustement', 
-                fontsize=16, fontweight='700', color='#1f2937', pad=20)
+    # Configuration des axes avec style moderne et ticks personnalisés
+    ax.set(title='Comparaison Gumbel vs Montana\nÉvaluation de la qualité d\'ajustement', 
+           xticks=xTicks, xticklabels=xtlabs, 
+           yticks=yTicks, yticklabels=ytlabs,
+           xlabel='Durée de précipitation', 
+           ylabel='Intensité de précipitation (mm/h)')
     
     # Grille moderne
-    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#d1d5db')
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#d1d5db', which='both')
     ax.set_axisbelow(True)
     
     # Légende moderne avec deux colonnes
@@ -365,10 +410,10 @@ def create_comparison_plot(idf_obj):
     ax.tick_params(colors='#6b7280', labelsize=10)
     
     # Annotation explicative
-    ax.text(0.02, 0.98, 'Lignes pleines: IDF observé\nLignes pointillées: Modèle Montana', 
-            transform=ax.transAxes, fontsize=10, color='#6b7280',
-            verticalalignment='top', bbox=dict(boxstyle='round,pad=0.3', 
-            facecolor='white', edgecolor='#e5e7eb', alpha=0.9))
+    # ax.text(0.02, 0.98, 'Lignes pleines: IDF observé\nLignes pointillées: Modèle Montana', 
+    #         transform=ax.transAxes, fontsize=10, color='#6b7280',
+    #         verticalalignment='top', bbox=dict(boxstyle='round,pad=0.3', 
+    #         facecolor='white', edgecolor='#e5e7eb', alpha=0.9))
     
     plt.tight_layout()
     return fig
@@ -420,7 +465,8 @@ def create_cumuls_curve(idf_obj):
         cumuls = regression_values * idf_obj.columns.astype(float)
         
         # Label avec formule mathématique (syntaxe mathtext)
-        label = f'{period} ans : $C_T(D) = {b_param:.2f} \\times D^{{(1 - {a_param:.3f})}}$'
+        # label = f'{period} ans : $C_T(D) = {b_param:.2f} \\times D^{{(1 - {a_param:.3f})}}$'
+        label = f'{period} ans'
         
         ax.plot(idf_obj.columns.astype(float), cumuls, 
                 color=colors[i % len(colors)], linewidth=2.5,
@@ -433,11 +479,11 @@ def create_cumuls_curve(idf_obj):
            ylabel='Cumul de précipitation (mm)')
     ax.set_axisbelow(True)
     
-    # Légende moderne avec formules mathématiques
-    legend = ax.legend(title='Temps de retour - Coefficients de Montana', 
-                      loc='center left', bbox_to_anchor=(1.05, 0.5),
+    # Légende moderne placée sur la figure
+    legend = ax.legend(title='Temps de retour', 
+                      loc='upper left',
                       frameon=True, fancybox=True, shadow=True,
-                      title_fontsize=11, fontsize=10)
+                      title_fontsize=12, fontsize=11)
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.95)
     legend.get_frame().set_edgecolor('#e5e7eb')

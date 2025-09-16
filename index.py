@@ -195,12 +195,21 @@ st.markdown("""
         border-radius: 8px;
         transition: all 0.3s ease;
         font-weight: 500;
+        padding: 12px 24px !important;
+        margin: 0 4px;
+        min-width: auto !important;
     }
     
     .stTabs [aria-selected="true"] {
         background: var(--primary-color);
         color: white;
         box-shadow: var(--shadow);
+        transform: translateY(-1px);
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(79, 70, 229, 0.1);
+        transform: translateY(-1px);
     }
     
     /* Expander */
@@ -443,9 +452,18 @@ def display_results(idf_obj, station_name):
     
     # Graphiques avec onglets modernes
     st.markdown("### 📈 Visualisations")
-    tab1, tab2, tab3 = st.tabs(["  🔶 Montana  ", "  💧 Cumuls  ", "  📊 Distribution  "])
+    tab1, tab2, tab3, tab4 = st.tabs([" Courbes - Gumbel", " Courbes - Montana", " Cumuls", " Comparaison"])
     
     with tab1:
+        st.markdown("**Courbes IDF** - *Intensité vs Durée*")
+        try:
+            fig_idf = create_idf_curves_plot(idf_obj)
+            st.pyplot(fig_idf)
+            st.caption("📌 Courbes Intensité-Durée-Fréquence - Gumbel")
+        except Exception as e:
+            st.error(f"Erreur graphique IDF: {e}")
+    
+    with tab2:
         st.markdown("**Courbes Montana** - *Modèle I = b × t^(-a)*")
         try:
             fig_montana = create_montana_curves_plot(idf_obj)
@@ -454,7 +472,7 @@ def display_results(idf_obj, station_name):
         except Exception as e:
             st.error(f"Erreur graphique Montana: {e}")
     
-    with tab2:
+    with tab3:
         st.markdown("**Cumuls Annuels** - *Précipitations cumulées*")
         try:
             fig_cumuls = create_cumuls_curve(idf_obj)
@@ -463,14 +481,31 @@ def display_results(idf_obj, station_name):
         except Exception as e:
             st.error(f"Erreur graphique cumuls: {e}")
     
-    with tab3:
-        st.markdown("**Ajustements Gumbel** - *Distribution des valeurs extrêmes*")
+    with tab4:
+        st.markdown("**Comparaison** - *IDF vs Montana*")
         try:
-            fig_distribution = create_distribution_plot(idf_obj)
-            st.pyplot(fig_distribution)
-            st.caption("📌 Analyse statistique des ajustements Gumbel par durée")
+            fig_comparison = create_comparison_plot(idf_obj)
+            st.pyplot(fig_comparison)
+            st.caption("📌 Comparaison entre courbes IDF Gumbel et modèle de Montana")
         except Exception as e:
-            st.error(f"Erreur graphique distribution: {e}")
+            st.error(f"Erreur graphique comparaison: {e}")
+        # try:
+        #     fig_cumuls = create_cumuls_curve(idf_obj)
+        #     st.pyplot(fig_cumuls)
+        #     st.caption("📌 Cumul annuel des précipitations par période de retour")
+        # except Exception as e:
+        #     st.error(f"Erreur graphique cumuls: {e}")
+    
+    # Onglet supplémentaire pour la distribution
+    # st.markdown("---")
+    # with st.expander("📊 Analyse des Distributions (Ajustements Gumbel)", expanded=False):
+    #     st.markdown("**Ajustements Gumbel** - *Distribution des valeurs extrêmes*")
+    #     try:
+    #         fig_distribution = create_distribution_plot(idf_obj)
+    #         st.pyplot(fig_distribution)
+    #         st.caption("📌 Analyse statistique des ajustements Gumbel par durée")
+    #     except Exception as e:
+    #         st.error(f"Erreur graphique distribution: {e}")
     
     # with tab4:
     #     st.markdown("**Méthodologie de Calcul** - *Comprendre les courbes IDF*")
@@ -662,25 +697,25 @@ def main():
         
         st.markdown("---")
         
-        # 📚 Section Documentation rapide
-        st.markdown("### 📚 Documentation")
-        with st.expander("ℹ️ Guide Rapide IDF", expanded=False):
-            st.markdown("""
-            **Processus de calcul IDF** :
+        # # 📚 Section Documentation rapide
+        # st.markdown("### 📚 Documentation")
+        # with st.expander("ℹ️ Guide Rapide IDF", expanded=False):
+        #     st.markdown("""
+        #     **Processus de calcul IDF** :
             
-            1. **📊 Échantillonnage** : Maxima annuels
-            2. **📈 Ajustement** : Loi de Gumbel  
-            3. **⏰ Temps de retour** : P = 1 - 1/T
-            4. **🔢 Montana** : I = a × D^(-b)
-            5. **📊 Visualisation** : Courbes finales
+        #     1. **📊 Échantillonnage** : Maxima annuels
+        #     2. **📈 Ajustement** : Loi de Gumbel  
+        #     3. **⏰ Temps de retour** : P = 1 - 1/T
+        #     4. **🔢 Montana** : I = a × D^(-b)
+        #     5. **📊 Visualisation** : Courbes finales
             
-            **Applications** :
-            - Dimensionnement hydraulique
-            - Méthode rationnelle : Q = C × I × A
-            - Gestion des risques d'inondation
+        #     **Applications** :
+        #     - Dimensionnement hydraulique
+        #     - Méthode rationnelle : Q = C × I × A
+        #     - Gestion des risques d'inondation
             
-            💡 *Consultez l'onglet "Documentation" pour plus de détails*
-            """)
+        #     💡 *Consultez l'onglet "Documentation" pour plus de détails*
+        #     """)
         
         # Sauvegarder dans session state
         st.session_state.custom_periods = sorted(selected_periods)
