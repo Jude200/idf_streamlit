@@ -47,28 +47,22 @@ def display_idf_methodology():
         st.markdown("""
         ### 2.1 Traitement des données brutes
         
-        À partir des données de précipitation (pas de temps 5 minutes) :
+        À partir des données de précipitation (pas de temps 5 minutes), on calcule les intensités 
+        moyennes pour différentes durées glissantes :
         
-        ```python
-        # Calcul des intensités pour différentes durées glissantes
-        df[1] = df_raw.rolling(pd.Timedelta(1, "h")).sum()      # 1 heure
-        df[2] = df_raw.rolling(pd.Timedelta(2, "h")).sum() / 2  # 2 heures  
-        df[4] = df_raw.rolling(pd.Timedelta(4, "h")).sum() / 4  # 4 heures
-        df[8] = df_raw.rolling(pd.Timedelta(8, "h")).sum() / 8  # 8 heures
-        df[24] = df_raw.rolling(pd.Timedelta(24, "h")).sum() / 24  # 24 heures
-        ```
+        - **1 heure** : Cumul horaire glissant
+        - **2 heures** : Cumul sur 2h divisé par 2 pour obtenir l'intensité moyenne
+        - **4 heures** : Cumul sur 4h divisé par 4 pour obtenir l'intensité moyenne  
+        - **8 heures** : Cumul sur 8h divisé par 8 pour obtenir l'intensité moyenne
+        - **24 heures** : Cumul journalier divisé par 24 pour obtenir l'intensité moyenne
         
         ### 2.2 Extraction des maxima annuels
         
         **Principe** : Chaque année constitue un "bloc" indépendant
         
-        ```python
-        # Maxima annuels pour chaque durée
-        YearMax = df.resample('YE').max()
-        
-        # Dates des maxima (optionnel, pour analyse)
-        DateMax = df.resample('YE').apply(custom_resampler)
-        ```
+        On extrait le maximum annuel pour chaque durée d'agrégation. Cette méthode permet 
+        d'obtenir une série temporelle de valeurs extrêmes indépendantes, condition nécessaire 
+        pour l'application de la théorie des valeurs extrêmes.
         
         **Hypothèses** :
         - 🔄 **Indépendance** : Les précipitations sont indépendantes d'une année sur l'autre
@@ -103,26 +97,18 @@ def display_idf_methodology():
         ### 3.4 Méthodes d'ajustement
         
         **A) Ajustement graphique** :
-        ```python
-        # Fonction de répartition empirique
-        probs = (ranks - 0.5) / N_obs
         
-        # Variable de Gumbel
-        U = -np.log(-np.log(probs))
-        
-        # Régression linéaire
-        regression = scipy.stats.linregress(U, observations)
-        μ = regression.intercept
-        σ = regression.slope
-        ```
+        1. Construction de la fonction de répartition empirique : $P(X ≤ x) = \\frac{rang - 0.5}{N}$
+        2. Calcul de la variable de Gumbel : $U = -\\ln[-\\ln(P)]$
+        3. Régression linéaire entre U et les observations
+        4. Extraction des paramètres : μ (ordonnée à l'origine) et σ (pente)
         
         **B) Ajustement par maximum de vraisemblance** :
-        ```python
-        # Utilisation de scipy (recommandé)
-        fit_params = scipy.stats.genextreme.fit(data, fc=0)
-        μ = fit_params[1]  # Paramètre de position
-        σ = fit_params[2]  # Paramètre d'échelle
-        ```
+        
+        Méthode statistique qui maximise la probabilité d'observer les données, 
+        implémentée dans les librairies spécialisées. Cette méthode est généralement 
+        plus précise que l'ajustement graphique car elle optimise directement 
+        les paramètres de la loi.
         """)
     
     # Section 4: Temps de retour
@@ -143,19 +129,14 @@ def display_idf_methodology():
         
         ### 4.3 Calcul des valeurs de retour
         
-        ```python
-        # Pour chaque durée et temps de retour
-        for duration in durations:
-            for T in return_periods:
-                # Probabilité de non-dépassement
-                prob = 1 - (1/T)
-                
-                # Loi de Gumbel ajustée pour cette durée
-                gumbel_dist = scipy.stats.genextreme(loc=μ, scale=σ, c=0)
-                
-                # Valeur d'intensité correspondante
-                intensity = gumbel_dist.ppf(prob)
-        ```
+        **Processus** :
+        
+        1. **Définition de la probabilité** : Pour chaque temps de retour T, calcul de la probabilité de non-dépassement
+        2. **Application de la loi ajustée** : Utilisation de la fonction quantile (inverse de la fonction de répartition)
+        3. **Extraction de l'intensité** : Obtention de la valeur d'intensité correspondante
+        
+        Ce processus est répété pour chaque durée d'agrégation et chaque temps de retour 
+        d'intérêt, permettant de construire une matrice complète des valeurs IDF.
         
         ### 4.4 Interprétation statistique
         
@@ -184,19 +165,16 @@ def display_idf_methodology():
         
         $$\\log(I_T) = \\log(a_T) - b_T \\log(D)$$
         
-        ```python
-        # Pour chaque temps de retour
-        for T in return_periods:
-            log_intensities = np.log(intensities[T])
-            log_durations = np.log(durations)
-            
-            # Régression linéaire
-            regression = scipy.stats.linregress(log_durations, log_intensities)
-            
-            # Coefficients de Montana
-            a[T] = np.exp(regression.intercept)  # Ordonnée à l'origine → a
-            b[T] = -regression.slope             # Pente négative → b
-        ```
+        **Processus d'ajustement** :
+        
+        1. **Transformation logarithmique** des intensités et des durées
+        2. **Régression linéaire** dans l'espace log-log
+        3. **Extraction des coefficients** :
+           - **a** = exponentielle de l'ordonnée à l'origine
+           - **b** = opposé de la pente (pour avoir une valeur positive)
+        
+        Cette méthode permet d'ajuster le modèle de Montana pour chaque temps de retour, 
+        en exploitant la relation quasi-linéaire observée entre log(intensité) et log(durée).
         
         ### 5.3 Calcul des cumuls
         
@@ -215,18 +193,16 @@ def display_idf_methodology():
         st.markdown("""
         ### 6.1 Processus complet
         
-        ```python
-        # 1. Génération d'une grille durée × temps de retour
-        durations = np.logspace(0, 2, 100)  # 1h à 100h (échelle log)
-        return_periods = [2, 5, 10, 20, 50, 100]
+        **Étapes de construction** :
         
-        # 2. Calcul des intensités avec Montana
-        for T in return_periods:
-            intensities[T] = a[T] * durations**(-b[T])
+        1. **Génération d'une grille** durée × temps de retour avec échelle logarithmique
+        2. **Calcul des intensités** avec les coefficients de Montana : $I = a × D^{-b}$
+        3. **Représentation graphique** avec échelles appropriées
+        4. **Validation** et vérification de la cohérence physique
         
-        # 3. Représentation graphique
-        plt.loglog(durations, intensities[T], label=f'{T} ans')
-        ```
+        La construction utilise une grille fine de durées (par exemple de 1h à 100h) 
+        pour obtenir des courbes lisses et continues, permettant l'interpolation 
+        pour n'importe quelle durée dans le domaine de validité.
         
         ### 6.2 Types de représentation
         
@@ -258,8 +234,14 @@ def display_idf_methodology():
         
         - **Q** : Débit de pointe (m³/s)
         - **C** : Coefficient de ruissellement
-        - **I** : Intensité IDF pour $T$ et $t_c$ → **$I_T(t_c)$**
+        - **I** : Intensité IDF pour le temps de retour T et le temps de concentration → **$I_T(t_c)$**
         - **A** : Surface du bassin versant (ha)
+        
+        **Application pratique** :
+        
+        Le temps de concentration $t_c$ du bassin versant détermine la durée à considérer 
+        dans les courbes IDF. L'intensité correspondante $I_T(t_c)$ est alors utilisée 
+        pour calculer le débit de pointe avec la méthode rationnelle.
         
         ### 7.2 Choix du temps de retour
         
@@ -371,183 +353,18 @@ def display_calculation_example():
         ### Étape 4 : Coefficients de Montana
         
         **Régression pour T=100 ans** :
-        - Données : (1h→75.4), (2h→64.2), (4h→48.1), (8h→35.7), (24h→21.8)
-        - Résultat : $I_{100}(D) = 85.4 \\times D^{-0.42}$
+        - Données d'entrée : (1h→75.4), (2h→64.2), (4h→48.1), (8h→35.7), (24h→21.8)
+        - Modèle obtenu : $I_{100}(D) = 85.4 \\times D^{-0.42}$
         - Coefficients : a = 85.4, b = 0.42
-        - R² = 0.98
+        - Qualité d'ajustement : R² = 0.98
         
         ### Étape 5 : Application pratique
         
         **Dimensionnement d'un bassin de 5 ha, C=0.6, T=10 ans, tc=2h** :
         
-        ```python
-        I_10_2h = 68.4 * 2**(-0.38) = 52.1 mm/h
-        Q_max = 0.6 * 52.1 * 5 = 156.3 m³/h = 43.4 l/s
-        ```
-        """)
-
-def display_quality_control():
-    """
-    Affiche les méthodes de contrôle qualité et validation
-    """
-    
-    st.markdown("## ✅ Contrôle Qualité et Validation")
-    
-    with st.expander("🔍 **Tests de Validation Statistique**"):
-        st.markdown("""
-        ### 1. Test d'ajustement de la loi
+        **Calcul de l'intensité** : $I_{10}(2h) = 68.4 \\times 2^{-0.38} = 52.1$ mm/h
         
-        **Test de Kolmogorov-Smirnov** :
-        ```python
-        from scipy.stats import kstest
-        
-        # Test d'ajustement à la loi de Gumbel
-        statistic, p_value = kstest(observations, gumbel_cdf)
-        
-        # Critère : p_value > 0.05 pour accepter H0 (bon ajustement)
-        ```
-        
-        **Test d'Anderson-Darling** :
-        Plus sensible aux queues de distribution (valeurs extrêmes)
-        
-        ### 2. Qualité de la régression Montana
-        
-        **Coefficient de détermination** :
-        - R² > 0.95 : Excellent ajustement
-        - R² > 0.90 : Bon ajustement  
-        - R² < 0.90 : Ajustement questionnable
-        
-        **Analyse des résidus** :
-        ```python
-        residuals = np.log(I_observed) - np.log(I_montana)
-        # Vérifier : moyenne ≈ 0, distribution normale, pas de tendance
-        ```
-        
-        ### 3. Cohérence des coefficients
-        
-        **Coefficient b** :
-        - Domaine physique : 0.3 < b < 1.2
-        - Valeurs typiques : 0.4 à 0.8
-        - Cohérence climatique : b plus faible en climat tropical
-        
-        **Coefficient a** :
-        - Croissance monotone avec le temps de retour
-        - Cohérence avec les valeurs régionales
-        
-        ### 4. Tests de robustesse
-        
-        **Bootstrap** :
-        ```python
-        # Génération d'échantillons bootstrap
-        bootstrap_params = []
-        for i in range(1000):
-            sample = np.random.choice(data, size=len(data), replace=True)
-            params = fit_gumbel(sample)
-            bootstrap_params.append(params)
-        
-        # Intervalles de confiance à 95%
-        CI_95 = np.percentile(bootstrap_params, [2.5, 97.5], axis=0)
-        ```
-        
-        **Validation croisée** :
-        - Diviser les données en périodes
-        - Ajuster sur période 1, valider sur période 2
-        - Comparer les paramètres obtenus
-        """)
-    
-    with st.expander("⚠️ **Limitations et Précautions**"):
-        st.markdown("""
-        ### Sources d'erreur principales
-        
-        **1. Échantillonnage insuffisant** :
-        - Minimum recommandé : 20-30 ans
-        - Impact : Sous-estimation des valeurs extrêmes
-        - Solution : Analyse régionale, méthodes bayésiennes
-        
-        **2. Non-stationnarité climatique** :
-        - Changement climatique
-        - Modifications d'occupation du sol  
-        - Solution : Tests de stationnarité, modèles non-stationnaires
-        
-        **3. Données manquantes ou erronées** :
-        - Lacunes dans les séries
-        - Erreurs de mesure ou de saisie
-        - Solution : Contrôle qualité préalable, reconstitution
-        
-        **4. Extrapolation spatiale** :
-        - Station non représentative du site d'étude
-        - Climat local différent
-        - Solution : Analyse de plusieurs stations, régionalisation
-        
-        ### Recommandations pratiques
-        
-        ✅ **Toujours** :
-        - Vérifier l'homogénéité des données
-        - Calculer les intervalles de confiance
-        - Comparer avec les valeurs régionales
-        - Documenter les hypothèses et limitations
-        
-        ⚠️ **Éviter** :
-        - Extrapolation au-delà du domaine d'ajustement
-        - Utilisation sans validation des hypothèses
-        - Négligence des incertitudes
-        - Application aveugle des formules
-        
-        ### Mise à jour et révision
-        
-        📅 **Fréquence recommandée** :
-        - Révision tous les 10-15 ans minimum
-        - Intégration de nouvelles données annuelles
-        - Réévaluation après événements extrêmes
-        - Adaptation aux évolutions climatiques
-        """)
-
-def display_references():
-    """
-    Affiche les références bibliographiques et ressources
-    """
-    
-    st.markdown("## 📚 Références et Ressources")
-    
-    with st.expander("📖 **Bibliographie Technique**"):
-        st.markdown("""
-        ### Ouvrages de référence
-        
-        **Hydrologie statistique** :
-        - Musy, A. & Higy, C. (2004). *Hydrologie : Une science de la nature*. PPUR.
-        - Roche, M. (1963). *Hydrologie de surface*. Gauthier-Villars.
-        - Hingray, B., Picouet, C., & Musy, A. (2009). *Hydrologie 2 : Une science pour l'ingénieur*. PPUR.
-        
-        **Statistiques des extrêmes** :
-        - Coles, S. (2001). *An Introduction to Statistical Modeling of Extreme Values*. Springer.
-        - Katz, R. W., Parlange, M. B., & Naveau, P. (2002). Statistics of extremes in hydrology. *Advances in Water Resources*, 25(8-12), 1287-1304.
-        
-        **Applications pratiques** :
-        - Chow, V. T., Maidment, D. R., & Mays, L. W. (1988). *Applied Hydrology*. McGraw-Hill.
-        - Shaw, E. M., Beven, K. J., Chappell, N. A., & Lamb, R. (2010). *Hydrology in Practice*. CRC Press.
-        
-        ### Standards et normes
-        
-        **France** :
-        - Instruction technique pour la surveillance et l'entretien des ouvrages d'art (ITSEOA)
-        - Guide technique SETRA : "Assainissement routier"
-        - Circulaire du 12 mai 1995 relative à l'assainissement des routes nationales
-        
-        **International** :
-        - WMO (2008). *Guide to Hydrological Practices*. World Meteorological Organization.
-        - Stedinger, J. R., Vogel, R. M., & Foufoula-Georgiou, E. (1993). Frequency analysis of extreme events. *Handbook of Hydrology*.
-        
-        ### Ressources numériques
-        
-        **Logiciels spécialisés** :
-        - R : Packages `extRemes`, `evd`, `ismev`
-        - Python : Modules `scipy.stats`, `pyextremes`
-        - MATLAB : Statistics and Machine Learning Toolbox
-        
-        **Bases de données** :
-        - Météo-France : Données climatologiques
-        - AMMA-CATCH : Observatoire hydrométéorologique Afrique de l'Ouest
-        - GRDC : Global Runoff Data Centre
+        **Débit de pointe** : $Q_{max} = 0.6 \\times 52.1 \\times 5 = 156.3$ m³/h = 43.4 l/s
         """)
 
 def create_methodology_page():
@@ -568,11 +385,9 @@ def create_methodology_page():
     """, unsafe_allow_html=True)
     
     # Menu de navigation
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2 = st.tabs([
         "📊 Méthodologie", 
-        "🔢 Exemple de calcul", 
-        "✅ Contrôle qualité",
-        "📚 Références"
+        "🔢 Exemple de calcul"
     ])
     
     with tab1:
@@ -580,12 +395,6 @@ def create_methodology_page():
     
     with tab2:
         display_calculation_example()
-    
-    with tab3:
-        display_quality_control()
-    
-    with tab4:
-        display_references()
     
     # Footer
     st.markdown("---")

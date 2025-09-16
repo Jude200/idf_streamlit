@@ -468,17 +468,37 @@ def create_distribution_plot(idf_obj):
     plt.rcParams['text.usetex'] = False
     plt.rcParams['mathtext.default'] = 'regular'
 
-    # Configuration des sous-graphiques
-    fig, axs = plt.subplots(2, 3, figsize=(16, 10), dpi=100)
+    # Configuration des sous-graphiques basée sur le nombre de durées
+    n_durations = len(idf_obj.columns)
+    
+    # Calculer la grille optimale
+    if n_durations <= 6:
+        # Arrangement 2x3 pour jusqu'à 6 durées
+        n_rows, n_cols = 2, 3
+    elif n_durations <= 8:
+        # Arrangement 2x4 pour 7-8 durées
+        n_rows, n_cols = 2, 4
+    else:
+        # Arrangement 3x? pour plus de durées
+        n_rows = 3
+        n_cols = int(np.ceil(n_durations / 3))
+    
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 5*n_rows), dpi=100)
     plt.subplots_adjust(left=0.07, right=0.75, bottom=0.07, top=0.9, wspace=0.3, hspace=0.3)
+    
+    # S'assurer que axs est un tableau 2D même pour une seule ligne
+    if n_rows == 1:
+        axs = axs.reshape(1, -1)
+    elif n_cols == 1:
+        axs = axs.reshape(-1, 1)
     
     fig.patch.set_facecolor('white')
     objLegend = []
     
     # Parcourir chaque durée
     for k, duration in enumerate(idf_obj.columns):
-        i = int(np.floor(k/3))
-        j = k % 3
+        i = int(np.floor(k / n_cols))  # Ligne basée sur le nombre de colonnes réel
+        j = k % n_cols                 # Colonne basée sur le nombre de colonnes réel
         
         # Récupérer les paramètres Gumbel pour cette durée
         mu = idf_obj.summary.loc[duration, 'mu']
@@ -558,8 +578,12 @@ def create_distribution_plot(idf_obj):
         if k == 0:
             objLegend = [obj1, obj2, obj3]
     
-    # Supprimer le dernier sous-graphique (position [1,2])
-    axs[1,2].remove()
+    # Masquer les sous-graphiques vides s'il y en a
+    total_positions = n_rows * n_cols
+    for empty_pos in range(n_durations, total_positions):
+        empty_i = empty_pos // n_cols
+        empty_j = empty_pos % n_cols
+        axs[empty_i, empty_j].set_visible(False)
     
     # Légende et titre général
     fig.legend(handles=objLegend, loc='right', fontsize=12, labelspacing=2.0)
